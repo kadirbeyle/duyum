@@ -1,0 +1,909 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Duyum.TR</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .news-image {
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      position: relative;
+    }
+    .news-image::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0);
+      transition: background 0.3s ease;
+    }
+    .news-image:hover::after {
+      background: rgba(0, 0, 0, 0.15);
+    }
+    .news-image:hover {
+      transform: scale(1.03);
+      opacity: 0.95;
+    }
+    .whatsapp-btn {
+      transition: transform 0.3s ease, background-color 0.3s ease;
+    }
+    .whatsapp-btn:hover {
+      transform: scale(1.1);
+      background-color: #16a34a;
+    }
+    .nav-link {
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1e40af;
+      background-color: #eff6ff;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .nav-link:hover {
+      color: #ffffff;
+      background-color: #1e40af;
+      transform: scale(1.05);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    }
+    .nav-link.active {
+      color: #ffffff;
+      background-color: #1e40af;
+    }
+    .section-container {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.75rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    .news-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+    .comment-form input, .comment-form textarea {
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      padding: 0.5rem;
+      width: 100%;
+    }
+    .comment-form button {
+      background-color: #1e40af;
+      color: #ffffff;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      transition: background-color 0.2s ease;
+    }
+    .comment-form button:hover {
+      background-color: #1e3a8a;
+    }
+    .comment-item {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 0.5rem 0;
+    }
+    .reply-form {
+      margin-left: 2rem;
+      display: none;
+    }
+    .emoji-btn {
+      cursor: pointer;
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+    .emoji-btn:hover {
+      transform: scale(1.2);
+    }
+    .typing-container {
+      display: inline-block;
+      position: relative;
+    }
+    .typing-char {
+      opacity: 0;
+      display: inline-block;
+      animation: typing 0.1s forwards;
+    }
+    @keyframes typing {
+      to { opacity: 1; }
+    }
+    .marquee {
+      display: inline-flex;
+      animation: marquee 20s linear infinite;
+    }
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    #ticker:hover .marquee {
+      animation-play-state: paused;
+    }
+    .carousel-number {
+      width: 2rem;
+      height: 2rem;
+      line-height: 2rem;
+      text-align: center;
+      border-radius: 9999px;
+      background-color: #1e40af;
+      color: #ffffff;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .carousel-number:hover {
+      background-color: #1e3a8a;
+    }
+    .carousel-number.active {
+      background-color: #3b82f6;
+    }
+    #chatWidget {
+      transition: all 0.3s ease;
+    }
+    #chatWidget.hidden {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    .chat-message {
+      border-radius: 0.375rem;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body class="bg-white">
+  <!-- Navigasyon Çubuğu -->
+  <nav class="bg-white p-4 fixed top-0 w-full z-20 shadow-md">
+    <div class="container mx-auto flex justify-between items-center">
+      <h1 class="text-xl font-extrabold text-[#1e3a8a] typing-container" id="siteTitle">Duyum.TR</h1>
+      <ul class="flex space-x-2">
+        <li><a href="#" id="homeBtn" class="nav-link active" data-category="all">Ana</a></li>
+        <li><a href="#" id="siyasetBtn" class="nav-link" data-category="siyaset">Siyaset</a></li>
+        <li><a href="#" id="ekonomiBtn" class="nav-link" data-category="ekonomi">Ekonomi</a></li>
+        <li><a href="#" id="sporBtn" class="nav-link" data-category="spor">Spor</a></li>
+        <li><a href="#" id="dunyaBtn" class="nav-link" data-category="dunya">Dünya</a></li>
+        <li><a href="#" id="magazinBtn" class="nav-link" data-category="magazin">Magazin</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Kayan Yazı Bandı -->
+  <div class="bg-blue-600 text-white text-sm py-3 fixed top-16 w-full z-10 flex items-center overflow-hidden" id="ticker">
+    <div class="marquee inline-flex whitespace-nowrap" id="tickerContent">
+      <!-- Fiyatlar buraya dinamik eklenecek -->
+    </div>
+  </div>
+
+  <!-- Ana İçerik Alanı -->
+  <div id="mainContent" class="container mx-auto py-6 mt-24">
+    <!-- Kaydırmalı Haber Navigasyonu -->
+    <div class="mb-8 section-container p-8">
+      <div class="relative overflow-hidden">
+        <div id="carousel" class="flex transition-transform duration-500 ease-in-out">
+          <!-- Carousel haber kartları -->
+        </div>
+        <button id="prevBtn" class="absolute left-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition opacity-70 hover:opacity-100">←</button>
+        <button id="nextBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition opacity-70 hover:opacity-100">→</button>
+        <div id="carouselNumbers" class="flex justify-center space-x-2 mt-4">
+          <!-- Haber numaraları -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Son Haberler -->
+    <div class="py-4 section-container p-4">
+      <div id="haberler" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Haber kartları -->
+      </div>
+      <div id="loading" class="text-center text-gray-600 text-sm mt-4 hidden">Yükleniyor...</div>
+    </div>
+  </div>
+
+  <!-- Haber Detay Alanı -->
+  <div id="newsDetail" class="hidden container mx-auto py-6 mt-24">
+    <button id="backBtn" class="mb-4 px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition">Geri dön</button>
+    <div id="newsDetailContent" class="p-4 section-container">
+      <!-- Haber detayları -->
+    </div>
+  </div>
+
+  <!-- Yapay Zeka Sohbet Penceresi -->
+  <div id="chatWidget" class="fixed bottom-16 left-4 w-80 bg-white shadow-lg rounded-lg z-20 hidden">
+    <div class="flex justify-between items-center p-3 bg-blue-600 text-white rounded-t-lg">
+      <span class="text-sm font-semibold">DuyumBot</span>
+      <button id="toggleChatBtn" class="text-white hover:text-gray-200">✕</button>
+    </div>
+    <div id="chatMessages" class="h-64 overflow-y-auto p-3 bg-gray-50 text-sm">
+      <!-- Mesajlar -->
+    </div>
+    <div class="p-3 border-t">
+      <input id="chatInput" type="text" placeholder="Mesaj yaz..." class="w-full p-2 border rounded-md text-sm">
+      <button id="sendChatBtn" class="mt-2 w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 text-sm">Gönder</button>
+    </div>
+  </div>
+  <button id="openChatBtn" class="fixed bottom-16 left-4 bg-blue-600 text-white p-3 rounded-full shadow-md z-20">
+    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+    </svg>
+  </button>
+
+  <!-- WhatsApp İletişim Butonu -->
+  <a href="https://wa.me/905447457899" target="_blank" class="fixed bottom-4 right-4 bg-green-500 text-white p-3 rounded-full shadow-md whatsapp-btn z-20">
+    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.144.553 4.166 1.518 5.91L0 24l6.335-1.668 5.61 1.468c6.627 0 12-5.373 12-12S18.627 0 12 0zm3.917 16.115c-.24.675-1.215 1.215-2.01 1.395-.51.12-1.185.18-1.92.06-.735-.12-2.355-.72-3.45-1.755-2.355-2.235-3.15-4.71-3.27-5.145-.12-.435-.06-.915.18-1.335.24-.42.54-.72.96-.84.42-.12.84-.06 1.14 0 .3.06.54.18.84.54l.72 1.14c.24.36.36.66.3.96-.06.3-.18.54-.36.78-.18.24-.36.48-.48.66-.12.18-.24.36-.18.54.06.18.48.96 1.44 1.86.96.9 1.74 1.26 1.92 1.38.18.12.36.06.54-.06.18-.12.78-.42 1.38-.78.6-.36 1.08-.48 1.5-.36.42.12.66.3.96.54l1.14.72c.36.24.54.54.54.96-.06.42-.36.96-.99 1.65z"/>
+    </svg>
+  </a>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-400 p-3 mt-6">
+    <div class="container mx-auto text-center">
+      <p class="text-xs">© 2025 Duyum.TR</p>
+    </div>
+  </footer>
+
+  <script>
+    // RSS beslemeleri
+    const rssUrls = [
+      'https://haberglobal.com.tr/rss',
+      'https://haberglobal.com.tr/rss/gundem'
+    ];
+
+    // DOM elemanları
+    const haberContainer = document.getElementById("haberler");
+    const carouselContainer = document.getElementById("carousel");
+    const carouselNumbers = document.getElementById("carouselNumbers");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const mainContent = document.getElementById("mainContent");
+    const newsDetail = document.getElementById("newsDetail");
+    const newsDetailContent = document.getElementById("newsDetailContent");
+    const backBtn = document.getElementById("backBtn");
+    const navLinks = document.querySelectorAll('.nav-link');
+    const siteTitle = document.getElementById("siteTitle");
+    const ticker = document.getElementById("ticker");
+    const tickerContent = document.getElementById("tickerContent");
+    const loading = document.getElementById("loading");
+    const chatWidget = document.getElementById("chatWidget");
+    const openChatBtn = document.getElementById("openChatBtn");
+    const toggleChatBtn = document.getElementById("toggleChatBtn");
+    const chatMessages = document.getElementById("chatMessages");
+    const chatInput = document.getElementById("chatInput");
+    const sendChatBtn = document.getElementById("sendChatBtn");
+
+    // Kategori anahtar kelimeleri ve RSS eşleştirme
+    const categoryKeywords = {
+      siyaset: ['siyaset', 'politika', 'seçim', 'hükümet', 'parlamento', 'cumhurbaşkanı', 'bakan', 'politics', 'government', 'gundem'],
+      ekonomi: ['ekonomi', 'borsa', 'dolar', 'euro', 'enflasyon', 'faiz', 'iş', 'ticaret', 'economy', 'finance', 'market'],
+      spor: ['spor', 'futbol', 'basketbol', 'voleybol', 'maç', 'lig', 'şampiyon', 'sports', 'football', 'basketball'],
+      dunya: ['dünya', 'uluslararası', 'yurt dışı', 'nato', 'bm', 'avrupa', 'amerika', 'world', 'international', 'global'],
+      magazin: ['magazin', 'ünlü', 'dedikodu', 'celebrity', 'gossip', 'moda', 'film', 'dizi']
+    };
+
+    const rssCategoryMapping = {
+      'gundem': 'siyaset',
+      'general': 'all'
+    };
+
+    // Sayfalama ve veri
+    let allNews = [];
+    let currentPage = 1;
+    const newsPerPage = 16;
+    let currentCategory = 'all';
+    let isLoading = false;
+    let marketData = {
+      forex: {
+        USDTRY: { bid: 39.19, change_24h: 0.02 },
+        EURTRY: { bid: 44.80, change_24h: -0.04 }
+      },
+      gold: {
+        gram: { price: 4207, change_24h: 0.46 },
+        ons: { price: 3340, change_24h: 0.50 }
+      },
+      crypto: {
+        bitcoin: { price: 109572, change_24h: -0.33 },
+        ethereum: { price: 2600, change_24h: -0.21 }
+      },
+      borsa: {
+        BIST100: { value: 9659, change_24h: 1.18 }
+      }
+    };
+
+    // Site ismi için typing animasyonu
+    function triggerTypingAnimation() {
+      const text = "Duyum.TR";
+      siteTitle.innerHTML = text.split('').map(char => `<span class="typing-char">${char}</span>`).join('');
+      const chars = siteTitle.querySelectorAll('.typing-char');
+      chars.forEach((char, index) => {
+        char.style.animationDelay = `${index * 0.1}s`;
+      });
+    }
+
+    siteTitle.addEventListener('mouseenter', triggerTypingAnimation);
+
+    // Anlık piyasa verileri
+    function updateMarketData() {
+      marketData.forex.USDTRY.bid += (Math.random() - 0.5) * 0.05;
+      marketData.forex.USDTRY.change_24h = (Math.random() - 0.5) * 0.1;
+      marketData.forex.EURTRY.bid += (Math.random() - 0.5) * 0.05;
+      marketData.forex.EURTRY.change_24h = (Math.random() - 0.5) * 0.1;
+      marketData.gold.gram.price += (Math.random() - 0.5) * 5;
+      marketData.gold.gram.change_24h = (Math.random() - 0.5) * 0.5;
+      marketData.gold.ons.price += (Math.random() - 0.5) * 10;
+      marketData.gold.ons.change_24h = (Math.random() - 0.5) * 0.5;
+      marketData.crypto.bitcoin.price += (Math.random() - 0.5) * 100;
+      marketData.crypto.bitcoin.change_24h = (Math.random() - 0.5) * 0.5;
+      marketData.crypto.ethereum.price += (Math.random() - 0.5) * 50;
+      marketData.crypto.ethereum.change_24h = (Math.random() - 0.5) * 0.5;
+      marketData.borsa.BIST100.value += (Math.random() - 0.5) * 50;
+      marketData.borsa.BIST100.change_24h = (Math.random() - 0.5) * 1;
+    }
+
+    async function fetchMarketData() {
+      try {
+        updateMarketData();
+        const tickerItems = [
+          `<span class="mx-4">💵 Dolar/TL: ${marketData.forex.USDTRY.bid.toFixed(2)} (${marketData.forex.USDTRY.change_24h.toFixed(2)}%) <span class="${marketData.forex.USDTRY.change_24h >= 0 ? 'text-green-400' : 'text-red-400'}">${marketData.forex.USDTRY.change_24h >= 0 ? '↑' : '↓'}</span></span>`,
+          `<span class="mx-4">💶 Euro/TL: ${marketData.forex.EURTRY.bid.toFixed(2)} (${marketData.forex.EURTRY.change_24h.toFixed(2)}%) <span class="${marketData.forex.EURTRY.change_24h >= 0 ? 'text-green-400' : 'text-red-400'}">${marketData.forex.EURTRY.change_24h >= 0 ? '↑' : '↓'}</span></span>`,
+          `<span class="mx-4">🥇 Gram Altın: ${marketData.gold.gram.price.toFixed(0)} TL (${marketData.gold.gram.change_24h.toFixed(2)}%) <span class="${marketData.gold.gram.change_24h >= 0 ? 'text-green-400' : 'text-red-400'}">${marketData.gold.gram.change_24h >= 0 ? '↑' : '↓'}</span></span>`,
+          `<span class="mx-4">🌟 Ons Altın: ${marketData.gold.ons.price.toFixed(0)} $ (${marketData.gold.ons.change_24h.toFixed(2)}%) <span class="${marketData.gold.ons.change_24h >= 0 ? 'text-green-400' : 'text-red-400'}">${marketData.gold.ons.change_24h >= 0 ? '↑' : '↓'}</span></span>`,
+          `<span class="mx-4">📈 BIST 100: ${marketData.borsa.BIST100.value.toFixed(0)} (${marketData.borsa.BIST100.change_24h.toFixed(2)}%) <span class="${marketData.borsa.BIST100.change_24h >= 0 ? 'text-green-400' : 'text-red-400'}">${marketData.borsa.BIST100.change_24h >= 0 ? '↑' : '↓'}</span></span>`,
+          `<span class="mx-4">₿ Bitcoin: ${marketData.crypto.bitcoin.price.toFixed(0)} $ (${marketData.crypto.bitcoin.change_24h.toFixed(2)}%) <span class="${marketData.crypto.bitcoin.change_24h >= 0 ? 'text-green-400' : 'text-red-400'}">${marketData.crypto.bitcoin.change_24h >= 0 ? '↑' : '↓'}</span></span>`,
+          `<span class="mx-4">🔗 Ethereum: ${marketData.crypto.ethereum.price.toFixed(0)} $ (${marketData.crypto.ethereum.change_24h.toFixed(2)}%) <span class="${marketData.crypto.ethereum.change_24h >= 0 ? 'text-green-400' : 'text-red-400'}">${marketData.crypto.ethereum.change_24h >= 0 ? '↑' : '↓'}</span></span>`
+        ];
+        tickerContent.innerHTML = tickerItems.join(' | ');
+      } catch (error) {
+        console.error('Piyasa verileri çekme hatası:', error);
+        tickerContent.innerHTML = 'Piyasa verileri yüklenemedi.';
+      }
+    }
+
+    fetchMarketData();
+    setInterval(fetchMarketData, 30000);
+
+    // RSS beslemelerini çek
+    async function fetchRSS(url) {
+      try {
+        const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
+        if (!response.ok) {
+          throw new Error(`HTTP hatası: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!data.items || data.items.length === 0) {
+          console.warn(`Boş RSS: ${url}`);
+          return [];
+        }
+        const rssCategory = url.match(/\/rss\/([^/]+)/)?.[1] || 'general';
+        const mappedCategory = rssCategoryMapping[rssCategory] || 'all';
+        const sourceName = data.feed.title || rssCategory.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Haber Global';
+        return data.items.map(item => {
+          let category = mappedCategory;
+          const titleLower = item.title?.toLowerCase() || '';
+          const categories = item.categories || [];
+          for (const [cat, keywords] of Object.entries(categoryKeywords)) {
+            if (categories.some(c => c.toLowerCase().includes(cat)) || 
+                keywords.some(keyword => titleLower.includes(keyword))) {
+              category = cat;
+              break;
+            }
+          }
+          return { 
+            ...item, 
+            source: sourceName, 
+            category, 
+            id: btoa(item.link || Math.random().toString()), 
+            thumbnail: item.thumbnail || item.enclosure?.link 
+          };
+        });
+      } catch (error) {
+        console.error(`RSS çekme hatası (${url}):`, error);
+        return [];
+      }
+    }
+
+    // Haber kartı oluştur
+    function createNewsCard(news, isCarousel = false) {
+      const haberCard = document.createElement("div");
+      const imageUrl = news.thumbnail || news.enclosure?.link || (isCarousel ? 'https://via.placeholder.com/600x350' : 'https://via.placeholder.com/400x200');
+      if (isCarousel) {
+        haberCard.className = "flex-shrink-0 w-full news-card";
+        haberCard.innerHTML = `
+          <div class="news-image w-full h-[350px] cursor-pointer rounded-t-xl" data-news='${encodeURIComponent(JSON.stringify(news))}'>
+            <img src="${imageUrl}" alt="${news.title || 'Haber'}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/600x350'">
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mt-3 text-center px-2 py-2">${news.title || 'Başlık Yok'}</h3>
+        `;
+      } else {
+        haberCard.className = "w-full news-card";
+        haberCard.innerHTML = `
+          <div class="news-image w-full h-48 cursor-pointer rounded-t-xl" data-news='${encodeURIComponent(JSON.stringify(news))}'>
+            <img src="${imageUrl}" alt="${news.title || 'Haber'}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/400x200'">
+          </div>
+          <h3 class="text-base font-semibold text-gray-900 mt-2 text-center px-2 py-2">${news.title || 'Başlık Yok'}</h3>
+        `;
+      }
+      return haberCard;
+    }
+
+    // Tam içerik
+    function getFullContent(news) {
+      return `
+        <p class="mb-4">${news.description || 'Bu haberin içeriği mevcut değil.'}</p>
+        <p class="text-gray-500 text-sm">Kaynak: ${news.source || 'Haber Global'}</p>
+      `;
+    }
+
+    // Yorumları yükle
+    function loadComments(newsId) {
+      const comments = JSON.parse(localStorage.getItem(`comments_${newsId}`) || '[]');
+      const commentList = document.createElement('div');
+      commentList.id = 'commentList';
+      comments.forEach((comment, index) => {
+        const commentItem = document.createElement('div');
+        commentItem.className = 'comment-item';
+        const reactions = comment.reactions || { '👍': 0, '❤️': 0, '😊': 0, '😢': 0 };
+        commentItem.innerHTML = `
+          <p class="text-sm font-semibold text-gray-800">${comment.name} ${comment.surname}</p>
+          <p class="text-sm text-gray-600">${comment.text}</p>
+          <div class="flex space-x-2 mt-1">
+            <span class="emoji-btn" data-comment-id="${index}" data-emoji="👍">👍 ${reactions['👍']}</span>
+            <span class="emoji-btn" data-comment-id="${index}" data-emoji="❤️">❤️ ${reactions['❤️']}</span>
+            <span class="emoji-btn" data-comment-id="${index}" data-emoji="😊">😊 ${reactions['😊']}</span>
+            <span class="emoji-btn" data-comment-id="${index}" data-emoji="😢">😢 ${reactions['😢']}</span>
+          </div>
+          <button class="text-sm text-blue-600 mt-1 reply-btn" data-comment-id="${index}">Yanıtla</button>
+          <div class="reply-form hidden" id="replyForm_${index}">
+            <form class="comment-form mt-2">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2">
+                <input type="text" class="reply-name" placeholder="İsim" required>
+                <input type="text" class="reply-surname" placeholder="Soyisim" required>
+              </div>
+              <textarea class="reply-text" placeholder="Yanıtınız" rows="3" required></textarea>
+              <button type="submit" class="mt-2">Yanıt Gönder</button>
+            </form>
+          </div>
+          <div class="replies ml-4 mt-2" id="replies_${index}"></div>
+        `;
+        commentList.appendChild(commentItem);
+
+        const repliesContainer = commentItem.querySelector(`#replies_${index}`);
+        (comment.replies || []).forEach(reply => {
+          const replyItem = document.createElement('div');
+          replyItem.className = 'comment-item';
+          const replyReactions = reply.reactions || { '👍': 0, '❤️': 0, '😊': 0, '😢': 0 };
+          replyItem.innerHTML = `
+            <p class="text-sm font-semibold text-gray-800">${reply.name} ${reply.surname}</p>
+            <p class="text-sm text-gray-600">${reply.text}</p>
+            <div class="flex space-x-2 mt-1">
+              <span class="emoji-btn" data-comment-id="${index}" data-reply-id="${reply.id}" data-emoji="👍">👍 ${replyReactions['👍']}</span>
+              <span class="emoji-btn" data-comment-id="${index}" data-reply-id="${reply.id}" data-emoji="❤️">❤️ ${replyReactions['❤️']}</span>
+              <span class="emoji-btn" data-comment-id="${index}" data-reply-id="${reply.id}" data-emoji="😊">😊 ${replyReactions['😊']}</span>
+              <span class="emoji-btn" data-comment-id="${index}" data-reply-id="${reply.id}" data-emoji="😢">😢 ${reactions['😢']}</span>
+            </div>
+          `;
+          repliesContainer.appendChild(replyItem);
+        });
+      });
+      return commentList;
+    }
+
+    // Yorum kaydet
+    function saveComment(newsId, name, surname, text, parentId = null) {
+      if (!name || !surname || !text) {
+        alert('Lütfen tüm alanları doldurun.');
+        return;
+      }
+      const comments = JSON.parse(localStorage.getItem(`comments_${newsId}`) || '[]');
+      const newComment = {
+        id: Date.now().toString(),
+        name,
+        surname,
+        text,
+        timestamp: new Date().toISOString(),
+        reactions: { '👍': 0, '❤️': 0, '😊': 0, '😢': 0 },
+        replies: []
+      };
+      if (parentId !== null) {
+        const parentComment = comments[parentId];
+        parentComment.replies = parentComment.replies || [];
+        parentComment.replies.push(newComment);
+      } else {
+        comments.push(newComment);
+      }
+      localStorage.setItem(`comments_${newsId}`, JSON.stringify(comments));
+    }
+
+    // Emoji kaydet
+    function saveEmoji(newsId, commentId, emoji, replyId = null) {
+      const comments = JSON.parse(localStorage.getItem(`comments_${newsId}`) || '[]');
+      if (replyId) {
+        const reply = comments[commentId].replies.find(r => r.id === replyId);
+        if (reply) {
+          reply.reactions[emoji] = (reply.reactions[emoji] || 0) + 1;
+        }
+      } else {
+        comments[commentId].reactions[emoji] = (comments[commentId].reactions[emoji] || 0) + 1;
+      }
+      localStorage.setItem(`comments_${newsId}`, JSON.stringify(comments));
+    }
+
+    // Tüm haberleri detay sayfasında göster
+    function displayAllNewsInDetail(newsList) {
+      const allNewsContainer = document.createElement('div');
+      allNewsContainer.id = 'allNewsSection';
+      allNewsContainer.className = 'mt-8';
+      const newsGrid = document.createElement('div');
+      newsGrid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4';
+      newsList.forEach(news => {
+        const card = createNewsCard(news, false);
+        newsGrid.appendChild(card);
+      });
+      allNewsContainer.appendChild(newsGrid);
+      return allNewsContainer;
+    }
+
+    // Haber detayını göster
+    function showNewsDetail(news) {
+      const fullContent = getFullContent(news);
+      newsDetailContent.innerHTML = `
+        <div class="w-full max-w-3xl mx-auto">
+          <div class="w-full h-[400px] rounded-t-xl overflow-hidden">
+            <img src="${news.thumbnail || news.enclosure?.link || 'https://via.placeholder.com/600x400'}" alt="${news.title || 'Haber'}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/600x400'">
+          </div>
+          <h2 class="text-xl font-semibold text-gray-900 mt-4 text-center">${news.title || 'Başlık Yok'}</h2>
+          <div class="text-gray-700 text-sm mt-4 leading-relaxed px-4">${fullContent}</div>
+          <hr class="my-4 border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-800 mt-4">Yorumlar</h3>
+          <div id="commentList" class="mt-2"></div>
+          <form id="commentForm" class="comment-form mt-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <input type="text" id="name" placeholder="İsim" required>
+              <input type="text" id="surname" placeholder="Soyisim" required>
+            </div>
+            <textarea id="commentText" placeholder="Yorumunuz" rows="4" required></textarea>
+            <button type="submit" class="mt-4">Yorum Yap</button>
+          </form>
+          <div id="allNewsSection" class="mt-8"></div>
+        </div>
+      `;
+      mainContent.classList.add('hidden');
+      newsDetail.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      const commentList = loadComments(news.id);
+      newsDetailContent.querySelector('#commentList').replaceWith(commentList);
+
+      const allNewsSection = displayAllNewsInDetail(allNews);
+      newsDetailContent.querySelector('#allNewsSection').replaceWith(allNewsSection);
+
+      const commentForm = document.getElementById('commentForm');
+      commentForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value;
+        const surname = document.getElementById('surname').value;
+        const text = document.getElementById('commentText').value;
+        saveComment(news.id, name, surname, text);
+        commentForm.reset();
+        const updatedCommentList = loadComments(news.id);
+        newsDetailContent.querySelector('#commentList').replaceWith(updatedCommentList);
+        bindCommentEvents(news.id);
+      });
+
+      document.querySelectorAll('.news-image').forEach(image => {
+        image.addEventListener('click', (e) => {
+          e.preventDefault();
+          const newsData = JSON.parse(decodeURIComponent(image.getAttribute('data-news')));
+          showNewsDetail(newsData);
+        });
+      });
+
+      bindCommentEvents(news.id);
+    }
+
+    // Yorum olaylarını bağla
+    function bindCommentEvents(newsId) {
+      document.querySelectorAll('.reply-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const commentId = btn.getAttribute('data-comment-id');
+          const replyForm = document.getElementById(`replyForm_${commentId}`);
+          replyForm.classList.toggle('hidden');
+        });
+      });
+
+      document.querySelectorAll('.reply-form form').forEach(form => {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const commentId = form.parentElement.id.split('_')[1];
+          const name = form.querySelector('.reply-name').value;
+          const surname = form.querySelector('.reply-surname').value;
+          const text = form.querySelector('.reply-text').value;
+          saveComment(newsId, name, surname, text, parseInt(commentId));
+          form.reset();
+          form.parentElement.classList.add('hidden');
+          const updatedCommentList = loadComments(newsId);
+          newsDetailContent.querySelector('#commentList').replaceWith(updatedCommentList);
+          bindCommentEvents(newsId);
+        });
+      });
+
+      document.querySelectorAll('.emoji-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const commentId = btn.getAttribute('data-comment-id');
+          const emoji = btn.getAttribute('data-emoji');
+          const replyId = btn.getAttribute('data-reply-id');
+          saveEmoji(newsId, commentId, emoji, replyId);
+          const updatedCommentList = loadComments(newsId);
+          newsDetailContent.querySelector('#commentList').replaceWith(updatedCommentList);
+          bindCommentEvents(newsId);
+        });
+      });
+    }
+
+    // Ana sayfayı göster
+    function showMainContent() {
+      mainContent.classList.remove('hidden');
+      newsDetail.classList.add('hidden');
+    }
+
+    // Sohbet penceresi
+    function toggleChat() {
+      chatWidget.classList.toggle('hidden');
+      openChatBtn.classList.toggle('hidden');
+    }
+
+    openChatBtn.addEventListener('click', toggleChat);
+    toggleChatBtn.addEventListener('click', toggleChat);
+
+    function addChatMessage(content, isUser = false) {
+      const message = document.createElement('div');
+      message.className = `chat-message ${isUser ? 'bg-blue-100 text-right' : 'bg-gray-100'}`;
+      message.textContent = content;
+      chatMessages.appendChild(message);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    sendChatBtn.addEventListener('click', () => {
+      const message = chatInput.value.trim().toLowerCase();
+      if (message) {
+        addChatMessage(message, true);
+        chatInput.value = '';
+        setTimeout(() => {
+          let response = 'Merhaba! Ne hakkında konuşalım?';
+          if (message.includes('haber')) {
+            response = 'Hangi kategoriden haber istersiniz? Siyaset, ekonomi, spor mu?';
+          } else if (message.includes('magazin')) {
+            response = 'Magazin dedikoduları için Magazin sekmesine bak! 😊 Ne merak ediyorsun?';
+          } else if (message.includes('borsa') || message.includes('dolar')) {
+            response = `Dolar: ${marketData.forex.USDTRY.bid.toFixed(2)} TL. Ticker’da güncel veriler var!`;
+          } else if (message.includes('naber') || message.includes('nasılsın')) {
+            response = 'İyiyim, teşekkür! Güncel haberleri mi tarayım? 😊';
+          }
+          addChatMessage(response);
+        }, 500);
+      }
+    });
+
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendChatBtn.click();
+      }
+    });
+
+    // Haberleri filtrele ve göster
+    function displayNews(newsList, category, append = false) {
+      if (!append) {
+        carouselContainer.innerHTML = '';
+        haberContainer.innerHTML = '';
+        carouselNumbers.innerHTML = '';
+      }
+
+      const filteredNews = category === 'all' ? newsList : newsList.filter(news => news.category === category);
+      if (filteredNews.length === 0) {
+        haberContainer.innerHTML = '<p class="text-center text-gray-600 text-sm">Bu kategoride haber bulunamadı.</p>';
+        return false;
+      }
+
+      if (!append) {
+        filteredNews.slice(0, 6).forEach((news, index) => {
+          const card = createNewsCard(news, true);
+          carouselContainer.appendChild(card);
+
+          const number = document.createElement('span');
+          number.className = `carousel-number ${index === 0 ? 'active' : ''}`;
+          number.textContent = index + 1;
+          number.dataset.index = index;
+          carouselNumbers.appendChild(number);
+        });
+      }
+
+      const start = (currentPage - 1) * newsPerPage;
+      const end = start + newsPerPage;
+      filteredNews.slice(start, end).forEach(news => {
+        const card = createNewsCard(news, false);
+        haberContainer.appendChild(card);
+      });
+
+      document.querySelectorAll('.news-image').forEach(image => {
+        image.addEventListener('click', (e) => {
+          e.preventDefault();
+          const news = JSON.parse(decodeURIComponent(image.getAttribute('data-news')));
+          showNewsDetail(news);
+        });
+      });
+
+      return true;
+    }
+
+    // Tüm haberleri çek
+    async function loadNews(append = false) {
+      if (isLoading) return;
+      isLoading = true;
+      loading.classList.remove('hidden');
+      loading.textContent = 'Yükleniyor...';
+
+      try {
+        if (!append) {
+          allNews = [];
+          haberContainer.innerHTML = '<p class="text-center text-gray-600 text-sm">Haberler yükleniyor...</p>';
+          carouselContainer.innerHTML = '<p class="text-center text-gray-600 text-sm">Yükleniyor...</p>';
+        }
+
+        let failedCount = 0;
+        for (const url of rssUrls) {
+          const news = await fetchRSS(url);
+          if (news.length === 0) {
+            failedCount++;
+            console.warn(`No news fetched from ${url}`);
+          } else {
+            console.log(`Fetched ${news.length} news from ${url}`);
+          }
+          allNews = [...allNews, ...news];
+        }
+
+        if (allNews.length === 0) {
+          throw new Error('Hiçbir RSS kaynağından haber alınamadı.');
+        }
+
+        if (failedCount === rssUrls.length) {
+          throw new Error('Tüm RSS kaynakları başarısız.');
+        }
+
+        allNews = [...new Map(allNews.map(item => [item.link || item.id, item])).values()];
+        allNews.sort((a, b) => new Date(b.pubDate || Date.now()) - new Date(a.pubDate || Date.now()));
+
+        const displayed = displayNews(allNews, currentCategory, append);
+
+        if (!displayed) {
+          haberContainer.innerHTML = '<p class="text-center text-gray-600 text-sm">Bu kategoride haber bulunamadı.</p>';
+        }
+
+        let currentIndex = 0;
+        const cards = carouselContainer.children;
+
+        function updateCarousel() {
+          if (cards.length === 0) return;
+          const containerWidth = carouselContainer.offsetWidth;
+          carouselContainer.style.transform = `translateX(-${currentIndex * containerWidth}px)`;
+          Array.from(cards).forEach(card => {
+            card.style.width = `${containerWidth}px`;
+          });
+          document.querySelectorAll('.carousel-number').forEach((num, idx) => {
+            num.classList.toggle('active', idx === currentIndex);
+          });
+        }
+
+        nextBtn.addEventListener('click', () => {
+          if (currentIndex < cards.length - 1) {
+            currentIndex++;
+            updateCarousel();
+          }
+        });
+
+        prevBtn.addEventListener('click', () => {
+          if (currentIndex > 0) {
+            currentIndex--;
+            updateCarousel();
+          }
+        });
+
+        carouselNumbers.addEventListener('click', (e) => {
+          if (e.target.classList.contains('carousel-number')) {
+            currentIndex = parseInt(e.target.dataset.index);
+            updateCarousel();
+          }
+        });
+
+        setInterval(() => {
+          if (cards.length === 0) return;
+          if (currentIndex < cards.length - 1) {
+            currentIndex++;
+          } else {
+            currentIndex = 0;
+          }
+          updateCarousel();
+        }, 5000);
+
+        window.addEventListener('resize', updateCarousel);
+        updateCarousel();
+
+        const observer = new IntersectionObserver((entries) => {
+          if (entries[0].isIntersecting && !isLoading) {
+            currentPage++;
+            loadNews(true);
+          }
+        }, { threshold: 0.1 });
+
+        observer.observe(loading);
+      } catch (error) {
+        console.error('Haber yükleme hatası:', error);
+        haberContainer.innerHTML = '<p class="text-center text-red-600 text-sm">Haberler yüklenemedi, lütfen tekrar deneyin.</p>';
+        carouselContainer.innerHTML = '<p class="text-center text-red-600 text-sm">Haberler yüklenemedi.</p>';
+      } finally {
+        isLoading = false;
+        loading.classList.add('hidden');
+      }
+    }
+
+    // Navigasyon linkleri
+    navLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        currentCategory = link.getAttribute('data-category');
+        currentPage = 1;
+        navLinks.forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        showMainContent();
+        loadNews();
+      });
+    });
+
+    // Geri düğmesi
+    backBtn.addEventListener('click', showMainContent);
+
+    // Yükle
+    loadNews();
+  </script>
+</body>
+</html>
