@@ -1,0 +1,200 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haber Sitesi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+  <!-- Navigasyon Çubuğu -->
+  <nav class="bg-blue-600 text-white p-4 sticky top-0 shadow-md">
+    <div class="container mx-auto flex justify-between items-center">
+      <h1 class="text-2xl font-bold">Haber Sitesi</h1>
+      <ul class="flex space-x-6">
+        <li><a href="#" class="hover:text-gray-200">Ana Sayfa</a></li>
+        <li><a href="#" class="hover:text-gray-200">Siyaset</a></li>
+        <li><a href="#" class="hover:text-gray-200">Ekonomi</a></li>
+        <li><a href="#" class="hover:text-gray-200">Spor</a></li>
+        <li><a href="#" class="hover:text-gray-200">Dünya</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Kaydırmalı Haber Navigasyonu (Carousel) -->
+  <div class="container mx-auto py-8">
+    <h2 class="text-3xl font-bold mb-4 text-center">Öne Çıkan Haberler</h2>
+    <div class="relative overflow-hidden">
+      <div id="carousel" class="flex transition-transform duration-500 ease-in-out">
+        <!-- Carousel haber kartları buraya eklenecek -->
+      </div>
+      <button id="prevBtn" class="absolute left-0 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700">←</button>
+      <button id="nextBtn" class="absolute right-0 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700">→</button>
+    </div>
+  </div>
+
+  <!-- Ana İçerik -->
+  <div class="container mx-auto py-8">
+    <h2 class="text-3xl font-bold mb-6 text-center">Son Dakika Haberler</h2>
+    <div id="haberler" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Haber kartları buraya eklenecek -->
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-800 text-white p-4 mt-8">
+    <div class="container mx-auto text-center">
+      <p>© 2025 Haber Sitesi. Tüm hakları saklıdır.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Popüler haber sitelerinin RSS beslemeleri
+    const rssUrls = [
+      'https://www.trthaber.com/sondakika_articles.rss', // TRT Haber
+      'https://www.ntv.com.tr/son-dakika.rss', // NTV Son Dakika
+      'https://www.sozcu.com.tr/rss/anasayfa.xml', // Sözcü Ana Sayfa
+      'http://www.hurriyet.com.tr/rss/anasayfa', // Hürriyet Ana Sayfa
+      'http://www.milliyet.com.tr/rss' // Milliyet Ana Sayfa
+    ];
+
+    // Haber kartlarını oluştur
+    const haberContainer = document.getElementById("haberler");
+    const carouselContainer = document.getElementById("carousel");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+
+    // RSS beslemelerini çekmek için fonksiyon
+    async function fetchRSS(url) {
+      try {
+        const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
+        const data = await response.json();
+        return data.items.map(item => ({
+          ...item,
+          source: data.feed.title || url // Haber kaynağı bilgisini ekle
+        }));
+      } catch (error) {
+        console.error(`RSS çekme hatası (${url}):`, error);
+        return [];
+      }
+    }
+
+    // Haber kartı oluştur
+    function createNewsCard(news) {
+      const haberKarti = document.createElement("div");
+      haberKarti.className = "bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition w-[300px] flex-shrink-0";
+      haberKarti.innerHTML = `
+        <img src="${news.thumbnail || news.enclosure?.link || 'https://via.placeholder.com/400x200'}" alt="${news.title}" class="w-full h-48 object-cover rounded-t-lg">
+        <div class="p-4">
+          <h3 class="text-xl font-semibold mb-2">${news.title}</h3>
+          <p class="text-gray-600 mb-2">${(news.description || '').slice(0, 100)}...</p>
+          <p class="text-sm text-gray-500">${new Date(news.pubDate).toLocaleDateString('tr-TR')} - ${news.source}</p>
+          <a href="${news.link}" target="_blank" class="text-blue-600 hover:underline">Haberi Oku</a>
+        </div>
+      `;
+      return haberKarti;
+    }
+
+    // Tüm haberleri çekip birleştir
+    async function loadNews() {
+      haberContainer.innerHTML = '<p class="text-center">Haberler yükleniyor...</p>';
+      carouselContainer.innerHTML = '<p class="text-center">Öne çıkan haberler yükleniyor...</p>';
+      let allNews = [];
+
+      // Tüm RSS kaynaklarından haberleri çek
+      for (const url of rssUrls) {
+        const news = await fetchRSS(url);
+        allNews = [...allNews, ...news];
+      }
+
+      // Tarihe göre sırala (en yeni önce)
+      allNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+      // Carousel için ilk 5 haberi göster
+      carouselContainer.innerHTML = '';
+      allNews.slice(0, 5).forEach(news => {
+        const haberKarti = createNewsCard(news);
+        carouselContainer.appendChild(haberKarti);
+      });
+
+      // Diğer haberler için ana içerik
+      haberContainer.innerHTML = '';
+      allNews.slice(0, 12).forEach(news => {
+        const haberKarti = createNewsCard(news);
+        haberContainer.appendChild(haberKarti);
+      });
+
+      // Carousel kaydırma mantığı
+      let currentIndex = 0;
+      const cards = carouselContainer.children;
+      const cardWidth = 300; // Kart genişliği
+
+      nextBtn.addEventListener('click', () => {
+        if (currentIndex < cards.length - 1) {
+          currentIndex++;
+          carouselContainer.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
+        }
+      });
+
+      prevBtn.addEventListener('click', () => {
+        if (currentIndex > 0) {
+          currentIndex--;
+          carouselContainer.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
+        }
+      });
+
+      // Otomatik kaydırma (her 5 saniyede bir)
+      setInterval(() => {
+        if (currentIndex < cards.length - 1) {
+          currentIndex++;
+        } else {
+          currentIndex = 0;
+        }
+        carouselContainer.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
+      }, 5000);
+    }
+
+    // Sayfayı yüklerken haberleri çek
+    loadNews();
+  </script>
+</body>
+</html>
